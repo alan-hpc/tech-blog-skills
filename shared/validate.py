@@ -61,10 +61,22 @@ def check(path, strict=False):
         fails.append(f"代码块围栏不配平：{n_fence} 个 ``` （必须偶数）")
 
     # 2. wiki 链接目标存在
-    links = [l.split("|")[0].split("#")[0].strip()
-             for l in re.findall(r"(?<!!)\[\[([^\]]+)\]\]", s)]
-    broken = sorted({l for l in links
-                     if not os.path.exists(os.path.join(base, l + ".md"))})
+    #    注意：[[#标题]] 是同文件内的标题链接（Obsidian 语法），不指向别的文件，跳过。
+    raw = re.findall(r"(?<!!)\[\[([^\]]+)\]\]", s)
+    heads = set(re.findall(r"^#{1,6}\s+(.+?)\s*$", s, re.M))
+    links, bad_head = [], []
+    for l in raw:
+        tgt = l.split("|")[0].strip()
+        if tgt.startswith("#"):                      # 同文件标题链接
+            h = tgt[1:].strip()
+            if h and h not in heads:
+                bad_head.append(h)
+            continue
+        links.append(tgt.split("#")[0].strip())
+    broken = sorted({l for l in links if l and
+                     not os.path.exists(os.path.join(base, l + ".md"))})
+    if bad_head:
+        fails.append("指向不存在的标题：" + ", ".join(sorted(set(bad_head))))
     if broken:
         fails.append("坏的 wiki 链接：" + ", ".join(broken))
 
