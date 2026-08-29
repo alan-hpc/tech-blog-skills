@@ -104,7 +104,10 @@ def check(path, strict=False):
     lines = s.split("\n")
     inb, lang, start = False, "", 0
     wide, ascii_art = [], []
-    BOX = set("─│┌┐└┘├┤┬┴┼━┃╱╲╳▶◀▲▼")
+    # 真正的框图必然有「竖向连接符」；只有横线与拐角的多半是给代码加的下划线标注，
+    # 例如  desc[UR10][R6.64]
+    #            └─UR─┘ └─R─┘        ← 这不是框图，不该报
+    BOX = set("│├┤┬┴┼┃╱╲╳▲▼")
     for i, ln in enumerate(lines, 1):
         if ln.startswith("```"):
             if not inb:
