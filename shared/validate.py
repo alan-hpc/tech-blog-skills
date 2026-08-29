@@ -142,14 +142,37 @@ def check(path, strict=False):
 
     # --- 结构与纪律（strict 下算失败，否则告警） ---
 
-    missing_stages = [name for pat, name in STAGES if not re.search(pat, s, re.M)]
-    if missing_stages:
-        (fails if strict else warns).append(
-            "缺少九段式章节：" + "、".join(missing_stages))
+    # 文章类型决定用哪套结构检查（见 codesign-article「不是所有文章都是九段式」）
+    kind = "技术解析"
+    # 允许 markdown 粗体：> **文章类型**：数据集
+    m = re.search(r"文章类型\*{0,2}\s*[：:]\s*\*{0,2}(技术解析|索引|数据集)", s)
+    if m:
+        kind = m.group(1)
 
-    if not re.search(r"^###?\s*9\.[24]|没验证|未验证|什么会推翻|证伪", s, re.M):
+    missing_stages = []
+    if kind == "技术解析":
+        missing_stages = [name for pat, name in STAGES if not re.search(pat, s, re.M)]
+        if missing_stages:
+            (fails if strict else warns).append(
+                "缺少九段式章节：" + "、".join(missing_stages))
+    elif kind == "索引":
+        need = [("阅读路线|读法", "按角色的阅读路线"),
+                ("共同的限制|全系列.*限制|边界", "全系列共同的限制"),
+                ("目录|系列目录", "目录")]
+        miss = [lab for pat, lab in need if not re.search(pat, s)]
+        if miss:
+            (fails if strict else warns).append("索引篇缺少：" + "、".join(miss))
+    elif kind == "数据集":
+        need = [("测量口径|测量环境", "测量口径"),
+                ("修正清单|被推翻", "修正清单"),
+                ("没测|未测|测不了", "没测的与测不了的")]
+        miss = [lab for pat, lab in need if not re.search(pat, s)]
+        if miss:
+            (fails if strict else warns).append("数据集篇缺少：" + "、".join(miss))
+
+    if not re.search(r"^###?\s*9\.[24]|没验证|未验证|没测|测不了|什么会推翻|证伪", s, re.M):
         (fails if strict else warns).append(
-            "找不到「没验证什么」或「什么会推翻结论」——§9 不完整")
+            "找不到「没验证什么」或「什么会推翻结论」—— 边界不完整")
 
     if not any(h in s for h in GRADE_HINTS):
         (fails if strict else warns).append(
@@ -178,7 +201,7 @@ def check(path, strict=False):
     print(f"[{'PASS' if ok else 'FAIL'}] {path}")
     print(f"       {os.path.getsize(path):,} 字节 | 围栏 {n_fence} | "
           f"链接 {len(set(links))} | 图 {len(set(embeds))} | "
-          f"缺章节 {len(missing_stages)}")
+          f"类型 {kind}｜缺章节 {len(missing_stages)}")
     for f in fails:
         print(f"       ✗ {f}")
     for w in warns:
