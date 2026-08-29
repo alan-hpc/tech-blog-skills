@@ -1,0 +1,7 @@
+shared/env.toml
+*.cookies.txt
+cookies*.txt
+sources/*/blogs/_inbox/
+__pycache__/
+*.pyc
+.DS_Store
