@@ -32,8 +32,9 @@ def numbers(s):
 
 
 def citations(s):
-    """专利段落号 [00xx] 与条款号。"""
-    return Counter(re.findall(r"\[0\d{3}\]", s))
+    """说明书正文引用：公开申请用段落号 [00xx]，授权专利用列号 col.N。"""
+    return Counter(re.findall(r"\[0\d{3}\]", s)
+                   + [c.replace(" ", "") for c in re.findall(r"col\.\s?\d+", s)])
 
 
 def patents(s):

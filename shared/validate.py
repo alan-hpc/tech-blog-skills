@@ -152,6 +152,14 @@ def check(path, strict=False):
         (fails if strict else warns).append(
             "全文没有证据分级措辞（实测 / 据 X / 推断 / 据检索摘要）")
 
+    # 说明书正文引用：公开申请（A1）用段落号 [00xx]，授权专利（B2）用列号 col.N。
+    # 文章提到专利却一条正文引用都没有 —— 多半只读了权利要求和附图。
+    mentions_patent = re.search(r"\bUS\s?\d{7,11}|专利", s)
+    cites = set(re.findall(r"\[0\d{3}\]", s)) | set(re.findall(r"col\.\s?\d+", s))
+    if mentions_patent and not cites:
+        (fails if strict else warns).append(
+            "提到专利但没有任何说明书正文引用（[00xx] 或 col.N）—— 很可能只读了权利要求与附图")
+
     # 「定律」这类不可证伪的措辞
     for word in ["定律", "必然", "一定是", "毫无疑问"]:
         if word in s:
