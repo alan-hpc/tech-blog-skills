@@ -99,6 +99,44 @@ def check(path, strict=False):
     if has_perf and not any(h in s for h in CONTRACT_HINTS):
         fails.append("出现性能数字，但全文没有 n / 中位数 / 离散度 —— 违反测量契约")
 
+    # 6. 代码块里的超宽行 / ASCII 画图
+    #    等宽对齐只在终端成立；Obsidian/网页会软换行，把框图折成一堆断线。
+    lines = s.split("\n")
+    inb, lang, start = False, "", 0
+    wide, ascii_art = [], []
+    BOX = set("─│┌┐└┘├┤┬┴┼━┃╱╲╳▶◀▲▼")
+    for i, ln in enumerate(lines, 1):
+        if ln.startswith("```"):
+            if not inb:
+                inb, lang, start = True, (ln[3:].strip() or "(none)"), i
+                blk = []
+            else:
+                inb = False
+                w = max((sum(2 if ord(c) > 0x2000 else 1 for c in x) for x in blk),
+                        default=0)
+                boxy = sum(1 for x in blk if sum(1 for c in x if c in BOX) >= 3)
+                # 普通代码 78–90 列只告警（PTX/编译命令本身就长）；
+                # 超过 90 列几乎必然软换行，算失败。
+                if w > 78:
+                    wide.append((start, lang, w))
+                if boxy >= 2:
+                    ascii_art.append((start, lang, boxy))
+            continue
+        if inb:
+            blk.append(ln)
+    if ascii_art:
+        (fails if strict else warns).append(
+            "代码块里有 ASCII 画图（应改用 draw.io）：" +
+            ", ".join(f"行{a}[{b}]{c}行框线" for a, b, c in ascii_art))
+    hard = [x for x in wide if x[2] > 90]
+    soft = [x for x in wide if x[2] <= 90]
+    if hard:
+        fails.append("代码块超过 90 显示列（必然软换行）：" +
+                     ", ".join(f"行{a}[{b}]{c}列" for a, b, c in hard))
+    if soft:
+        warns.append("代码块 78–90 显示列（窄栏下可能换行）：" +
+                     ", ".join(f"行{a}[{b}]{c}列" for a, b, c in soft))
+
     # --- 结构与纪律（strict 下算失败，否则告警） ---
 
     missing_stages = [name for pat, name in STAGES if not re.search(pat, s, re.M)]
